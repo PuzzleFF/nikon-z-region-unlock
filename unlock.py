@@ -159,7 +159,7 @@ def device_info(cam):
 
     def string():
         n = take(1)[0]
-        return take(n * 2).decode("utf-16-le", "rstrip") if n else ""
+        return take(n * 2).decode("utf-16-le", "replace").rstrip("\x00") if n else ""
 
     take(8)
     string()
@@ -225,8 +225,11 @@ def main():
     cam.open_session()
     try:
         ident = device_info(cam)
-        print(f"{ident.get('model','?')}  firmware {ident.get('version','?')}  "
-              f"serial {ident.get('serial','?')}")
+        serial = (ident.get("serial") or "").strip("\x00 \t\r\n")
+        # Some states mask the serial as all zeros; hide it rather than print
+        # a confusing placeholder. / 某些状态下序列号被遮蔽成全零，此时不显示。
+        tail = f"  serial {serial}" if serial.strip("0") else ""
+        print(f"{ident.get('model','?')}  firmware {ident.get('version','?')}{tail}")
 
         if args.action == "info":
             return 0
